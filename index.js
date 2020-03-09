@@ -4,23 +4,28 @@ const fs = require('fs');
 
 // --------------------------------
 const OUTPUT_TO_CONSOLE = true;
-const INPUT_PORT = "Keystation 88";
-const KEY_MAP = [
-  { note: 30, key: 's' },
-  { note: 32, key: 'd' },
-  { note: 34, key: 'f' },
-  { note: 36, key: 'v' },
-  { note: 40, key: 'n' },
-  { note: 42, key: 'j' },
-  { note: 44, key: 'k' },
-  { note: 46, key: 'l' },
-
-  { note: 35, key: 'left' },
-  { note: 37, key: 'up' },
-  { note: 38, key: 'enter' },
-  { note: 39, key: 'down' },
-  { note: 41, key: 'right' },
-];
+const KEY_MAP = {
+  "Keystation 88": {
+    30: 's',
+    32: 'd',
+    34: 'f',
+    36: 'v',
+    40: 'n',
+    42: 'j',
+    44: 'k',
+    46: 'l'
+  },
+  "MIDIIN2 (Keystation 88)": {
+    93: 'Escape',
+    94: 'LShift',
+    95: 'RShift',
+    96: 'Up',
+    97: 'Down',
+    98: 'Left',
+    99: 'Right',
+    100: 'Enter'
+  }
+}
 const AHKEXE = process.env.ProgramFiles + "\\AutoHotkey\\AutoHotkey.exe";
 // --------------------------------
 
@@ -35,28 +40,23 @@ ahk.on('close', (code) => {
   process.exit();
 });
 
-// MIDI
-const input = new midi.Input();
-const portCount = input.getPortCount();
-
-let portNum = -1;
+// Setup MIDI Listener
+const inputForCheck = new midi.Input();
+const portCount = inputForCheck.getPortCount();
 for (let i = 0; i < portCount; i++) {
-  let name = input.getPortName(i);
-  if (OUTPUT_TO_CONSOLE) console.log('Port: ' + name);
-  
-  if (name === INPUT_PORT + " " + i) {
-    portNum = i;
-    break;
-  }
-}
-if (portNum == -1) {
-  console.error(`Port ${INPUT_PORT} not found`);
-  process.exit();
+  let portName = inputForCheck.getPortName(i).split(' ').slice(0, -1).join(' ');
+  if (OUTPUT_TO_CONSOLE) console.log('Port: ' + portName);
+
+  let input = new midi.Input();
+  input.on('message', (deltaTime, message) => {
+    onMidiMessage(portName, deltaTime, message);
+  });
+  input.openPort(i);
 }
 
 
 // set event listener
-input.on('message', (deltaTime, message) => {
+function onMidiMessage(portName, deltaTime, message) {
   let ch = message[0] & 0b1111;
   let sb = message[0] >> 4 & 0b1111;
   if (sb !== 9) {
@@ -65,15 +65,15 @@ input.on('message', (deltaTime, message) => {
 
   let note = message[1];
   let vel = message[2];
+
+  if (OUTPUT_TO_CONSOLE && vel > 0) {
+    console.log(`[${portName}] Note: ${note}`);
+  }
   
-  let map = KEY_MAP.find((val) => val.note == note);
-  if (map) {
-    ahk.stdin.write(`{${map.key} ${vel > 0 ? 'Down' : 'Up'}}\n`);
+  if (!KEY_MAP[portName] || !KEY_MAP[portName][note]) {
+    return;
   }
 
-  if (OUTPUT_TO_CONSOLE) {
-    console.log(`Note ${vel > 0 ? 'on' : 'off'}: ${note}`);
-  }
-});
-// Start MIDI
-input.openPort(portNum);
+  let key = KEY_MAP[portName][note];
+  ahk.stdin.write(`{${key} ${vel > 0 ? 'Down' : 'Up'}}\n`);
+};

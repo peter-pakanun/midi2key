@@ -8,7 +8,7 @@ Translate incoming MIDI messages to keypress, ***Windows only***
 4. Clone this repo by `git clone https://github.com/peter-pakanun/midi2key.git`
 5. Change directory by `cd midi2key`
 6. Install dependencies by `npm install`
-7. Edit keymap and input device in index.js file (default keymap is for DJMax Respect V)
+7. Edit keymap in index.js, Refer to key list [here](https://www.autohotkey.com/docs/KeyList.htm) (default keymap is for DJMax Respect V)
 8. Start the script by `node .`
 
 # Known Issues
